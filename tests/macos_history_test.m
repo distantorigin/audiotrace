@@ -20,11 +20,17 @@ int main(void) {
         }
         [controller updateHistory:&history];
         assert(table.numberOfRows == 500);
-        assert([[[table preparedCellAtColumn:1 row:0] stringValue] isEqualToString:@"App 600"]);
-        assert([[[table preparedCellAtColumn:1 row:499] stringValue] isEqualToString:@"App 101"]);
-        assert([[[table preparedCellAtColumn:2 row:0] stringValue] isEqualToString:@"600"]);
-        assert([[[table preparedCellAtColumn:3 row:0] stringValue] isEqualToString:@"-20.0"]);
-        assert([[[table preparedCellAtColumn:4 row:0] stringValue] isEqualToString:@"Details 600"]);
+        id<NSTableViewDataSource> dataSource = table.dataSource;
+        assert([[dataSource tableView:table objectValueForTableColumn:table.tableColumns[1] row:0]
+            isEqualToString:@"App 600"]);
+        assert([[dataSource tableView:table objectValueForTableColumn:table.tableColumns[1] row:499]
+            isEqualToString:@"App 101"]);
+        assert([[dataSource tableView:table objectValueForTableColumn:table.tableColumns[2] row:0]
+            isEqualToString:@"600"]);
+        assert([[dataSource tableView:table objectValueForTableColumn:table.tableColumns[3] row:0]
+            isEqualToString:@"-20.0"]);
+        assert([[dataSource tableView:table objectValueForTableColumn:table.tableColumns[4] row:0]
+            isEqualToString:@"Details 600"]);
         [table selectRowIndexes:[NSIndexSet indexSetWithIndex:20] byExtendingSelection:NO];
         ATEvent next = {.order = 601, .pid = 601};
         at_history_push(&history, &next);

@@ -2,7 +2,7 @@ name: Release
 
 on:
   push:
-    tags: ['windows-v*', 'macos-v*']
+    tags: ['v*']
   workflow_dispatch:
     inputs:
       platform:
@@ -19,8 +19,7 @@ jobs:
     runs-on: ubuntu-24.04
     outputs:
       platform: ${{ steps.version.outputs.platform }}
-      windows-version: ${{ steps.version.outputs.windows-version }}
-      macos-version: ${{ steps.version.outputs.macos-version }}
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
       - id: version
@@ -69,7 +68,7 @@ jobs:
       - name: Package
         shell: pwsh
         run: |
-          Compress-Archive -Path build/AudioTrace.exe,README.md -DestinationPath 'build/AudioTrace-${{ needs.version.outputs.windows-version }}-windows-${{ matrix.arch }}.zip' -CompressionLevel Optimal
+          Compress-Archive -Path build/AudioTrace.exe -DestinationPath 'build/AudioTrace-${{ needs.version.outputs.version }}-windows-${{ matrix.arch }}.zip' -CompressionLevel Optimal
       - uses: actions/upload-artifact@v4
         with:
           name: windows-${{ matrix.arch }}
@@ -101,18 +100,15 @@ jobs:
           bash macos/build.sh '${{ matrix.arch }}'
           binary=build/AudioTrace.app/Contents/MacOS/AudioTrace
           test "$(xcrun lipo -archs "$binary")" = '${{ matrix.arch }}'
-          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' build/AudioTrace.app/Contents/Info.plist)" = '${{ needs.version.outputs.macos-version }}'
-          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' build/AudioTrace.app/Contents/Info.plist)" = '${{ needs.version.outputs.macos-version }}'
-      - name: Package
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' build/AudioTrace.app/Contents/Info.plist)" = '${{ needs.version.outputs.version }}'
+          test "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' build/AudioTrace.app/Contents/Info.plist)" = '${{ needs.version.outputs.version }}'
+      - name: Verify disk image
         run: |
-          mkdir -p build/package
-          ditto build/AudioTrace.app build/package/AudioTrace.app
-          cp README.md build/package/
-          ditto -c -k --sequesterRsrc build/package 'build/AudioTrace-${{ needs.version.outputs.macos-version }}-macos-${{ matrix.arch }}.zip'
+          bash tests/macos_package_test.sh 'build/AudioTrace-${{ needs.version.outputs.version }}-macos-${{ matrix.arch }}.dmg' '${{ matrix.arch }}' '${{ needs.version.outputs.version }}'
       - uses: actions/upload-artifact@v4
         with:
           name: macos-${{ matrix.arch }}
-          path: build/AudioTrace-*.zip
+          path: build/AudioTrace-*.dmg
           if-no-files-found: error
           compression-level: 0
 
@@ -120,8 +116,8 @@ jobs:
     if: >-
       always() && !cancelled() && github.event_name == 'push' &&
       needs.version.result == 'success' &&
-      ((needs.version.outputs.platform == 'windows' && needs.windows.result == 'success') ||
-       (needs.version.outputs.platform == 'macos' && needs.macos.result == 'success'))
+      needs.windows.result == 'success' &&
+      needs.macos.result == 'success'
     needs: [version, windows, macos]
     runs-on: ubuntu-24.04
     permissions:
@@ -131,14 +127,13 @@ jobs:
         with:
           path: artifacts
           merge-multiple: true
-      - name: Publish release with checksums
+      - name: Publish release
         working-directory: artifacts
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           TAG: ${{ github.ref_name }}
         run: |
-          sha256sum AudioTrace-*.zip > SHA256SUMS.txt
-          platform="${TAG%%-v*}"
-          version="${TAG#*-v}"
-          gh release create "$TAG" AudioTrace-*.zip SHA256SUMS.txt --verify-tag --title "AudioTrace $version ($platform)" --generate-notes
+          version="${TAG#v}"
+          assets=(AudioTrace-*.zip AudioTrace-*.dmg)
+          gh release create "$TAG" "${assets[@]}" --verify-tag --title "AudioTrace $version" --generate-notes

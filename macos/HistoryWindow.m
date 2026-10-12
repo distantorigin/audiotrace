@@ -17,6 +17,7 @@
     self = [super initWithWindow:window];
     if (!self) return nil;
     window.releasedWhenClosed = NO;
+    window.title = @"Audio Event History";
     window.minSize = NSMakeSize(500, 240);
     [window center];
     _formatter = [[NSDateFormatter alloc] init];
@@ -85,9 +86,6 @@
     }
     [_scroll.contentView scrollToPoint:origin];
     [_scroll reflectScrolledClipView:_scroll.contentView];
-    self.window.title = [NSString stringWithFormat:@"AudioTrace - All traces (%lu of %u)%@",
-        (unsigned long)_displayed.count, AT_HISTORY_CAPACITY,
-        _displayed.count ? @"" : @" - No sounds detected yet"];
 }
 
 - (NSInteger)numberOfRowsInTableView:(NSTableView *)tableView {

@@ -33,8 +33,11 @@ if [[ "$architecture" == universal ]]; then
 else
     cp "build/AudioTrace-$architecture" "$app/Contents/MacOS/AudioTrace"
 fi
-xcrun lipo "$app/Contents/MacOS/AudioTrace" -verify_arch "${architectures[@]}"
+for arch in "${architectures[@]}"; do
+    xcrun lipo "$app/Contents/MacOS/AudioTrace" -verify_arch "$arch"
+done
 /usr/bin/plutil -lint "$app/Contents/Info.plist"
 /usr/bin/codesign --force --sign "${AUDIO_TRACE_SIGN_ID:--}" --identifier local.audiotrace.app "$app"
 /usr/bin/codesign --verify --strict "$app"
 echo "Built $app. Run: open build/AudioTrace.app"
+bash macos/package.sh "$architecture"

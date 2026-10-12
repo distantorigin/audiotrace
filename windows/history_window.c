@@ -50,10 +50,6 @@ static void refresh_history(void) {
     }
     SendMessageW(historyList, WM_SETREDRAW, TRUE, 0);
     InvalidateRect(historyList, NULL, TRUE);
-    wchar_t title[128];
-    swprintf(title, 128, L"AudioTrace - All traces (%u of %u)%ls", (unsigned)displayed.count,
-        AT_HISTORY_CAPACITY, displayed.count ? L"" : L" - No sounds detected yet");
-    SetWindowTextW(historyWindow, title);
 }
 
 static void cell_text(const ATEvent *event, int column, wchar_t *text, int capacity) {
@@ -151,7 +147,7 @@ void at_history_window_show(HINSTANCE instance, HWND owner, const ATHistory *his
         cls.lpszClassName = L"AudioTraceHistory"; cls.hCursor = LoadCursorW(NULL, IDC_ARROW);
         cls.hIcon = LoadIconW(NULL, IDI_APPLICATION);
         RegisterClassW(&cls);
-        historyWindow = CreateWindowExW(0, cls.lpszClassName, L"AudioTrace - All traces",
+        historyWindow = CreateWindowExW(0, cls.lpszClassName, L"Audio Event History",
             WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, 960, 480,
             owner, NULL, instance, NULL);
         if (!historyWindow) {

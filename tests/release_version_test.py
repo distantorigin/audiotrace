@@ -1,4 +1,4 @@
-"""Exercise release routing and validation using independent platform versions."""
+"""Exercise unified release routing and version validation."""
 import os
 from pathlib import Path
 import shutil
@@ -27,39 +27,41 @@ class ReleaseVersionTests(unittest.TestCase):
             output = (work / "output").read_text() if (work / "output").exists() else ""
             return result, dict(line.split("=", 1) for line in output.splitlines())
 
-    def test_windows_tag_ignores_macos_version(self):
-        result, output = self.run_metadata("windows-v1.2.3", macos=None)
+    def test_shared_tag_builds_both_platforms(self):
+        result, output = self.run_metadata("v1.2.3", windows="1.2.3", macos="1.2.3")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(output, {"platform": "windows", "windows-version": "1.2.3"})
+        self.assertEqual(output, {"platform": "all", "version": "1.2.3"})
 
-    def test_macos_tag_ignores_windows_version(self):
-        result, output = self.run_metadata("macos-v4.5.6", windows=None)
+    def test_manual_build_keeps_shared_version(self):
+        result, output = self.run_metadata(windows="1.2.3", macos="1.2.3")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(output, {"platform": "macos", "macos-version": "4.5.6"})
-
-    def test_manual_build_keeps_both_versions(self):
-        result, output = self.run_metadata()
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(output, {"platform": "all", "windows-version": "1.2.3", "macos-version": "4.5.6"})
+        self.assertEqual(output, {"platform": "all", "version": "1.2.3"})
 
     def test_manual_platform_selection(self):
-        result, output = self.run_metadata(platform="windows", macos=None)
+        result, output = self.run_metadata(platform="windows", windows="1.2.3", macos="1.2.3")
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(output["platform"], "windows")
+        self.assertEqual(output, {"platform": "windows", "version": "1.2.3"})
+
+    def test_mismatched_platform_versions_are_rejected(self):
+        result, _ = self.run_metadata(windows="1.2.3", macos="4.5.6")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("must match", result.stderr)
 
     def test_mismatched_tag_is_rejected(self):
-        result, _ = self.run_metadata("windows-v4.5.6")
+        result, _ = self.run_metadata("v4.5.6", windows="1.2.3", macos="1.2.3")
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("windows-v1.2.3", result.stderr)
+        self.assertIn("v1.2.3", result.stderr)
 
-    def test_old_shared_tag_is_rejected(self):
-        result, _ = self.run_metadata("v1.2.3")
-        self.assertNotEqual(result.returncode, 0)
+    def test_platform_tags_are_rejected(self):
+        for tag in ("windows-v1.2.3", "macos-v1.2.3"):
+            with self.subTest(tag=tag):
+                result, _ = self.run_metadata(tag, windows="1.2.3", macos="1.2.3")
+                self.assertNotEqual(result.returncode, 0)
 
     def test_invalid_versions_are_rejected(self):
         for version in ("1.0", "01.2.3", "1.2.3-beta", "1.2.3+build", "1.2.3.4", "text", "65536.0.0"):
             with self.subTest(version=version):
-                result, _ = self.run_metadata(platform="windows", windows=version)
+                result, _ = self.run_metadata(windows=version, macos=version)
                 self.assertNotEqual(result.returncode, 0)
 
     def test_unknown_platform_is_rejected(self):
