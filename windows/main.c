@@ -21,6 +21,7 @@
 #include <math.h>
 #include "../common/audio_events.h"
 #include "version.h"
+#include "history_window.h"
 
 #define WM_TRAY (WM_APP + 1)
 #define WM_REFRESH (WM_APP + 2)
@@ -29,6 +30,7 @@
 #define ID_COPY 102
 #define ID_QUIT 103
 #define ID_ABOUT 104
+#define ID_HISTORY 105
 #define ID_EVENT 200
 
 typedef struct Endpoint Endpoint;
@@ -448,6 +450,7 @@ static void sample_sessions(void) {
             ATEvent event = s->metadata;
             event.timestamp = wall_time(); event.order = now; event.peak = peak;
             at_history_push(&app.history, &event);
+            at_history_window_changed();
         }
     }
 }
@@ -467,13 +470,15 @@ static void event_line(const ATEvent *event, wchar_t *text, size_t capacity, BOO
 }
 
 static void copy_history(void) {
-    wchar_t text[10000] = {0};
+    size_t capacity = app.history.count * 1024 + 1;
+    wchar_t *text = calloc(capacity, sizeof(*text));
+    if (!text) return;
     size_t used = 0;
     for (size_t i = 0; i < app.history.count; ++i) {
-        event_line(&app.history.events[i], text + used, 10000 - used, TRUE);
+        event_line(&app.history.events[i], text + used, capacity - used, TRUE);
         used = wcslen(text);
     }
-    if (!OpenClipboard(app.window)) return;
+    if (!OpenClipboard(app.window)) { free(text); return; }
     HGLOBAL memory = GlobalAlloc(GMEM_MOVEABLE, (used + 1) * sizeof(wchar_t));
     if (memory) {
         void *data = GlobalLock(memory);
@@ -485,6 +490,7 @@ static void copy_history(void) {
         } else GlobalFree(memory);
     }
     CloseClipboard();
+    free(text);
 }
 
 static void add_tray(void) {
@@ -505,7 +511,8 @@ static void show_menu(void) {
     AppendMenuW(menu, MF_STRING | MF_GRAYED, 0, app.paused ? L"Paused" : L"Monitoring");
     AppendMenuW(menu, MF_SEPARATOR, 0, NULL);
     if (!app.history.count) AppendMenuW(menu, MF_STRING | MF_GRAYED, 0, L"No sounds detected yet");
-    for (size_t i = 0; i < app.history.count; ++i) {
+    size_t menuCount = app.history.count < AT_MENU_CAPACITY ? app.history.count : AT_MENU_CAPACITY;
+    for (size_t i = 0; i < menuCount; ++i) {
         wchar_t line[512];
         event_line(&app.history.events[i], line, 512, FALSE);
         /* Escape menu mnemonics so an app named A&B displays correctly. */
@@ -523,6 +530,7 @@ static void show_menu(void) {
         AppendMenuW(menu, MF_STRING | MF_GRAYED, 0, status);
     }
     AppendMenuW(menu, MF_SEPARATOR, 0, NULL);
+    AppendMenuW(menu, MF_STRING, ID_HISTORY, L"Show all traces...");
     AppendMenuW(menu, MF_STRING, ID_PAUSE, app.paused ? L"Resume monitoring" : L"Pause monitoring");
     AppendMenuW(menu, MF_STRING | (app.history.count ? 0 : MF_GRAYED), ID_COPY, L"Copy history");
     AppendMenuW(menu, MF_STRING, ID_CLEAR, L"Clear history");
@@ -532,13 +540,19 @@ static void show_menu(void) {
     GetCursorPos(&point);
     SetForegroundWindow(app.window);
     /* Snapshot indices while TrackPopupMenu pumps timers/COM notification messages. */
-    ATHistory snapshot = app.history;
+    ATEvent snapshot[AT_MENU_CAPACITY];
+    memcpy(snapshot, app.history.events, menuCount * sizeof(*snapshot));
     UINT command = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_NONOTIFY | TPM_RIGHTBUTTON,
                                   point.x, point.y, 0, app.window, NULL);
     DestroyMenu(menu);
     PostMessageW(app.window, WM_NULL, 0, 0);
     if (command == ID_QUIT) DestroyWindow(app.window);
-    else if (command == ID_CLEAR) at_history_clear(&app.history);
+    else if (command == ID_CLEAR) {
+        at_history_clear(&app.history);
+        at_history_window_changed();
+    }
+    else if (command == ID_HISTORY)
+        at_history_window_show((HINSTANCE)GetWindowLongPtrW(app.window, GWLP_HINSTANCE), app.window, &app.history);
     else if (command == ID_COPY) copy_history();
     else if (command == ID_ABOUT) {
         MessageBoxW(app.window,
@@ -549,8 +563,8 @@ static void show_menu(void) {
     else if (command == ID_PAUSE) {
         app.paused = !app.paused;
         if (app.paused) clear_sources(); else { refresh_sources(); sample_sessions(); }
-    } else if (command >= ID_EVENT && command < ID_EVENT + snapshot.count) {
-        ATEvent *event = &snapshot.events[command - ID_EVENT];
+    } else if (command >= ID_EVENT && command < ID_EVENT + menuCount) {
+        ATEvent *event = &snapshot[command - ID_EVENT];
         wchar_t detail[1024], name[256], message[1400];
         to_wide(event->detail, detail, 1024);
         to_wide(event->source, name, 256);

@@ -23,10 +23,11 @@ try {
         ($Arch -eq 'arm64' -and $target -notmatch '^aarch64-')) { throw "Compiler target '$target' does not match $Arch." }
     & $windres -I windows windows/AudioTrace.rc -O coff -o build/version.o
     if ($LASTEXITCODE -ne 0) { throw 'Windows version resource compilation failed.' }
-    $sources = @('windows/main.c', 'common/audio_events.c', 'build/version.o')
-    $libraries = @('-lole32', '-luuid', '-lshell32', '-luser32', '-lgdi32', '-lm')
+    $sources = @('windows/main.c', 'windows/history_window.c', 'common/audio_events.c', 'build/version.o')
+    $libraries = @('-lole32', '-luuid', '-lshell32', '-luser32', '-lgdi32', '-lcomctl32', '-lm')
     # Keep system DLL imports; statically link compiler support so no runtime ships beside the EXE.
-    $flags = @('-std=c11', '-Os', '-flto', '-ffunction-sections', '-fdata-sections',
+    # GNU PE linkers can materialize .bss$ sections as file data; leave zero-filled history in BSS.
+    $flags = @('-std=c11', '-Os', '-flto', '-ffunction-sections',
         '-Wl,--gc-sections', '-s', '-Wall', '-Wextra', '-Werror', '-municode', '-static')
     & $compiler @flags -mwindows @sources @libraries -o build/AudioTrace.exe
     if ($LASTEXITCODE -ne 0) { throw 'Windows app compilation failed.' }

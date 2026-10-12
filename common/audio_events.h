@@ -6,7 +6,8 @@
 #include <stdint.h>
 #include <stdatomic.h>
 
-#define AT_HISTORY_CAPACITY 10
+#define AT_HISTORY_CAPACITY 500
+#define AT_MENU_CAPACITY 10
 #define AT_QUEUE_CAPACITY 16
 #define AT_PEAK_THRESHOLD 0.001f
 #define AT_SILENCE_SECONDS 0.5

@@ -1,6 +1,7 @@
 #import <AppKit/AppKit.h>
 #import <CoreAudio/CoreAudio.h>
 #import "ProcessTap.h"
+#import "HistoryWindow.h"
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
@@ -18,6 +19,8 @@
     NSTimer *_refreshTimer;
     AudioObjectPropertyListenerBlock _processListener;
     ATHistory _history;
+    ATHistoryWindow *_historyWindow;
+    BOOL _historyDirty;
     NSDateFormatter *_formatter;
     NSString *_lastError;
     BOOL _paused;
@@ -105,8 +108,11 @@
 }
 
 - (void)drainEvents {
-    if (_paused) return;
-    for (ATProcessTap *tap in _taps.allValues) [self drainTap:tap];
+    if (!_paused) for (ATProcessTap *tap in _taps.allValues) [self drainTap:tap];
+    if (_historyDirty && _historyWindow.window.visible) {
+        [_historyWindow updateHistory:&_history];
+        _historyDirty = NO;
+    }
 }
 
 - (void)drainTap:(ATProcessTap *)tap {
@@ -117,6 +123,7 @@
         snprintf(event.source, sizeof(event.source), "%s", tap.source.UTF8String);
         snprintf(event.detail, sizeof(event.detail), "%s", tap.detail.UTF8String);
         at_history_push(&_history, &event);
+        _historyDirty = YES;
     }
 }
 
@@ -140,7 +147,7 @@
     [menu addItem:[self item:status action:NULL]];
     [menu addItem:[NSMenuItem separatorItem]];
     if (!_history.count) [menu addItem:[self item:@"No sounds detected yet" action:NULL]];
-    for (size_t i = 0; i < _history.count; ++i) {
+    for (size_t i = 0; i < _history.count && i < AT_MENU_CAPACITY; ++i) {
         const ATEvent *event = &_history.events[i];
         NSMenuItem *item = [self item:[self lineForEvent:event] action:NULL];
         NSString *detail = [NSString stringWithUTF8String:event->detail] ?: @"";
@@ -162,6 +169,7 @@
     }
     [menu addItem:[NSMenuItem separatorItem]];
     [menu addItem:[self item:_paused ? @"Resume monitoring" : @"Pause monitoring" action:@selector(togglePause:)]];
+    [menu addItem:[self item:@"Show all traces..." action:@selector(showHistory:)]];
     NSMenuItem *copy = [self item:@"Copy history" action:@selector(copyHistory:)];
     [menu addItem:copy];
     [menu addItem:[self item:@"Clear history" action:@selector(clearHistory:)]];
@@ -184,7 +192,22 @@
         accessibilityDescription:@"AudioTrace"];
 }
 
-- (void)clearHistory:(id)sender { (void)sender; [self drainEvents]; at_history_clear(&_history); }
+- (void)clearHistory:(id)sender {
+    (void)sender;
+    [self drainEvents];
+    at_history_clear(&_history);
+    _historyDirty = YES;
+    [self drainEvents];
+}
+- (void)showHistory:(id)sender {
+    (void)sender;
+    [self drainEvents];
+    if (!_historyWindow) _historyWindow = [[ATHistoryWindow alloc] init];
+    [_historyWindow updateHistory:&_history];
+    _historyDirty = NO;
+    [NSApp activate];
+    [_historyWindow showWindow:nil];
+}
 - (BOOL)validateMenuItem:(NSMenuItem *)item {
     return item.action != @selector(copyHistory:) || _history.count > 0;
 }

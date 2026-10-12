@@ -24,7 +24,7 @@ cp macos/Info.plist "$app/Contents/Info.plist"
 for arch in "${architectures[@]}"; do
     xcrun clang -arch "$arch" -mmacosx-version-min=14.2 -std=c11 -fobjc-arc -fblocks \
         -Oz -flto -Wl,-dead_strip -Wall -Wextra -Werror \
-        macos/main.m macos/ProcessTap.m common/audio_events.c \
+        macos/main.m macos/HistoryWindow.m macos/ProcessTap.m common/audio_events.c \
         -framework AppKit -framework CoreAudio -o "build/AudioTrace-$arch"
     xcrun strip -x "build/AudioTrace-$arch"
 done
