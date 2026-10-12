@@ -18,8 +18,9 @@ cp macos/Info.plist "$app/Contents/Info.plist"
 # Build a universal app for Apple Silicon and Intel Macs.
 for arch in arm64 x86_64; do
     xcrun clang -arch "$arch" -mmacosx-version-min=14.2 -std=c11 -fobjc-arc -fblocks \
-        -O2 -Wall -Wextra -Werror macos/main.m macos/ProcessTap.m common/audio_events.c \
+        -Oz -flto -Wl,-dead_strip -Wall -Wextra -Werror macos/main.m macos/ProcessTap.m common/audio_events.c \
         -framework AppKit -framework CoreAudio -o "build/AudioTrace-$arch"
+    xcrun strip -x "build/AudioTrace-$arch"
 done
 xcrun lipo -create build/AudioTrace-arm64 build/AudioTrace-x86_64 -output "$app/Contents/MacOS/AudioTrace"
 /usr/bin/plutil -lint "$app/Contents/Info.plist"
