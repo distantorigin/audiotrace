@@ -6,9 +6,13 @@ AudioTrace shows which apps are making sound on Windows and macOS. It runs from 
 
 [Download the latest release](https://github.com/distantorigin/audiotrace/releases/latest).
 
-AudioTrace supports Windows 10 and 11. Download the x64 ZIP for most PCs or the ARM64 ZIP for Windows on Arm. Extract it and run `AudioTrace.exe`. It does not need installation or administrator access.
+### Windows 10 or 11
 
-AudioTrace requires macOS 14.2 or later. Download the arm64 DMG for Apple silicon or the x86_64 DMG for an Intel Mac. Open the DMG and drag AudioTrace to Applications. If macOS blocks the first launch, open System Settings > Privacy & Security and click **Open Anyway**. Allow system audio recording when macOS asks.
+Download the x64 ZIP for most PCs or the ARM64 ZIP for Windows on Arm. Unzip it and run `AudioTrace.exe`.
+
+### macOS 14.2 or later
+
+Download the arm64 DMG for Apple silicon or the x86_64 DMG for an Intel Mac. Open the DMG and drag AudioTrace to Applications. Allow system audio recording when macOS asks.
 
 ## Use
 
