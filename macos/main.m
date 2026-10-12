@@ -166,6 +166,7 @@
     [menu addItem:copy];
     [menu addItem:[self item:@"Clear history" action:@selector(clearHistory:)]];
     [menu addItem:[self item:@"Audio recording permissions…" action:@selector(openPermissions:)]];
+    [menu addItem:[self item:@"About AudioTrace" action:@selector(showAbout:)]];
     [menu addItem:[self item:@"Quit AudioTrace" action:@selector(quit:)]];
 }
 
@@ -202,6 +203,19 @@
     (void)sender;
     [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString:
         @"x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"]];
+}
+- (void)showAbout:(id)sender {
+    (void)sender;
+    [NSApp activate];
+    [NSApp orderFrontStandardAboutPanelWithOptions:@{
+        NSAboutPanelOptionApplicationName: @"AudioTrace",
+        NSAboutPanelOptionApplicationVersion: @AT_VERSION,
+        NSAboutPanelOptionVersion: @"",
+        NSAboutPanelOptionCredits: [[NSAttributedString alloc] initWithString:
+            @"https://github.com/distantorigin/audiotrace" attributes:@{
+                NSLinkAttributeName: [NSURL URLWithString:@"https://github.com/distantorigin/audiotrace"]
+            }]
+    }];
 }
 - (void)quit:(id)sender { (void)sender; [NSApp terminate:nil]; }
 

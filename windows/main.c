@@ -28,6 +28,7 @@
 #define ID_CLEAR 101
 #define ID_COPY 102
 #define ID_QUIT 103
+#define ID_ABOUT 104
 #define ID_EVENT 200
 
 typedef struct Endpoint Endpoint;
@@ -525,6 +526,7 @@ static void show_menu(void) {
     AppendMenuW(menu, MF_STRING, ID_PAUSE, app.paused ? L"Resume monitoring" : L"Pause monitoring");
     AppendMenuW(menu, MF_STRING | (app.history.count ? 0 : MF_GRAYED), ID_COPY, L"Copy history");
     AppendMenuW(menu, MF_STRING, ID_CLEAR, L"Clear history");
+    AppendMenuW(menu, MF_STRING, ID_ABOUT, L"About AudioTrace");
     AppendMenuW(menu, MF_STRING, ID_QUIT, L"Quit AudioTrace");
     POINT point;
     GetCursorPos(&point);
@@ -538,6 +540,12 @@ static void show_menu(void) {
     if (command == ID_QUIT) DestroyWindow(app.window);
     else if (command == ID_CLEAR) at_history_clear(&app.history);
     else if (command == ID_COPY) copy_history();
+    else if (command == ID_ABOUT) {
+        MessageBoxW(app.window,
+            L"AudioTrace " AT_VERSION_WIDE L"\n\n"
+            L"https://github.com/distantorigin/audiotrace",
+            L"About AudioTrace", MB_OK | MB_ICONINFORMATION);
+    }
     else if (command == ID_PAUSE) {
         app.paused = !app.paused;
         if (app.paused) clear_sources(); else { refresh_sources(); sample_sessions(); }
