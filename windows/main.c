@@ -673,6 +673,15 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous, PWSTR command, int s
         refresh_sources(); sample_sessions();
         SetTimer(app.window, 1, 20, NULL);
         SetTimer(app.window, 2, 1000, NULL);
+        NOTIFYICONDATAW data = {0};
+        data.cbSize = sizeof(data); data.hWnd = app.window; data.uID = 1;
+        data.uFlags = NIF_INFO;
+        data.dwInfoFlags = NIIF_INFO | NIIF_NOSOUND;
+        wcscpy(data.szInfoTitle, L"AudioTrace is monitoring");
+        wcscpy(data.szInfo, FAILED(app.lastError)
+            ? L"Monitoring has started, but some audio sources are unavailable. Open the tray icon for details."
+            : L"Monitoring sound activity. Open the AudioTrace tray icon to see recent sounds and their source apps.");
+        Shell_NotifyIconW(NIM_MODIFY, &data);
     }
     MSG message;
     int result;
