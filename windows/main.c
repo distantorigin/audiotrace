@@ -20,6 +20,7 @@
 #include <wchar.h>
 #include <math.h>
 #include "../common/audio_events.h"
+#include "version.h"
 
 #define WM_TRAY (WM_APP + 1)
 #define WM_REFRESH (WM_APP + 2)

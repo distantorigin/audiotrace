@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+#include "version.h"
 
 @interface ATAppDelegate : NSObject <NSApplicationDelegate, NSMenuDelegate, NSMenuItemValidation>
 @end
